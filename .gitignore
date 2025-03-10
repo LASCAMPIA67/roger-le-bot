@@ -3,3 +3,4 @@
 __pycache__/
 bot.log
 .env
+xp_data.json
