@@ -45,12 +45,12 @@ def setup_logger(name="bot"):
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
-    # Filtrer les logs inutiles de discord.py
-    for module in ("discord", "discord.http", "discord.gateway"):
-        logging.getLogger(module).setLevel(logging.WARNING)
+    # Filtrer les logs inutiles de discord.py si activé
+    if os.getenv("DISCORD_LOGGING", "FALSE").upper() != "TRUE":
+        for module in ("discord", "discord.http", "discord.gateway"):
+            logging.getLogger(module).setLevel(logging.WARNING)
 
     return logger
-
 
 # Initialisation du logger
 logger = setup_logger()
@@ -62,7 +62,7 @@ def get_token():
     """ Récupère et valide le token Discord depuis les variables d'environnement. """
     token = os.getenv("DISCORD_TOKEN")
 
-    if not token or not isinstance(token, str) or "." not in token:
+    if not token or not isinstance(token, str) or len(token.split(".")) < 3:
         logger.critical("❌ ERREUR : Token Discord invalide ou manquant dans le fichier .env !")
         raise ValueError("Le token Discord est absent ou incorrect. Vérifie ton fichier .env.")
 
