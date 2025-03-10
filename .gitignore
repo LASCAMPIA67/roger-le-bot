@@ -2,4 +2,4 @@
 __pycache__/
 bot.log
 .env
-
+.vscode/
