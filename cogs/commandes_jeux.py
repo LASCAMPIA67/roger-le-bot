@@ -1,63 +1,110 @@
 import discord
 import random
+from discord import app_commands
 from discord.ext import commands
 from config import logger
 
 class Jeux(commands.Cog):
+    """Cog contenant des jeux interactifs comme une calculatrice simple et Pierre-Feuille-Ciseau."""
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.hybrid_command(description="Effectue un calcul simple (+, -, *, /).")
-    async def calc(self, ctx: commands.Context, valeur_a: float, operation: str, valeur_b: float):
-        if operation == '/' and valeur_b == 0:
-            return await ctx.send("⛔ Division par zéro impossible.")
-        
-        operations = {"+": valeur_a + valeur_b, "-": valeur_a - valeur_b,
-                      "*": valeur_a * valeur_b, "/": valeur_a / valeur_b}
+    @app_commands.command(name="calc", description="Effectue un calcul simple (+, -, *, /).")
+    async def calc(self, interaction: discord.Interaction, valeur_a: float, operation: str, valeur_b: float):
+        """Effectue un calcul entre deux nombres et affiche le résultat."""
+        operations = {
+            "+": lambda a, b: a + b,
+            "-": lambda a, b: a - b,
+            "*": lambda a, b: a * b,
+            "/": lambda a, b: a / b if b != 0 else None  # Vérification de division par zéro
+        }
 
-        result = operations.get(operation)
+        if operation not in operations:
+            await interaction.response.send_message(
+                "⛔ Opérateur invalide ! Utilisez `+`, `-`, `*`, ou `/`.", ephemeral=True
+            )
+            return
+
+        result = operations[operation](valeur_a, valeur_b)
         if result is None:
-            return await ctx.send("⛔ Opérateur invalide (+, -, *, / uniquement).")
+            await interaction.response.send_message(
+                "⛔ Division par zéro impossible.", ephemeral=True
+            )
+            return
 
-        await ctx.send(f"🧮 `{valeur_a} {operation} {valeur_b}` = `{result}`")
-        logger.info(f"Calcul par {ctx.author} : {valeur_a}{operation}{valeur_b} = {result}")
+        response = f"🧮 `{valeur_a} {operation} {valeur_b}` = `{result}`"
+        await interaction.response.send_message(response)
+        logger.info(f"🧮 Calcul effectué par {interaction.user}: {valeur_a} {operation} {valeur_b} = {result}")
 
-    @commands.hybrid_command(description="Jouer à Pierre-Feuille-Ciseau contre le bot.")
-    async def pfc(self, ctx: commands.Context):
-        await ctx.send("Choisissez votre coup :", view=PFCView(), ephemeral=True)
+    @app_commands.command(name="pfc", description="Jouer à Pierre-Feuille-Ciseau contre le bot.")
+    async def pfc(self, interaction: discord.Interaction):
+        """Démarre une partie de Pierre-Feuille-Ciseau en interaction avec l'utilisateur."""
+        view = PFCView()
+        await interaction.response.send_message("🎮 **Choisissez votre coup :**", view=view)
+        logger.info(f"🎮 Jeu Pierre-Feuille-Ciseau lancé par {interaction.user}")
 
 class PFCView(discord.ui.View):
+    """Vue interactive pour le jeu Pierre-Feuille-Ciseau."""
+
     def __init__(self):
-        super().__init__(timeout=None)
+        super().__init__(timeout=30)  # Timeout pour éviter que les boutons restent actifs indéfiniment
         self.choices = ["pierre", "feuille", "ciseau"]
 
+    async def on_timeout(self):
+        """Désactive les boutons si aucun choix n'est fait avant le timeout."""
+        for child in self.children:
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
+        # Ici, 'interaction.message' n'est pas directement accessible,
+        # il est conseillé de stocker la référence du message lors de l'envoi si nécessaire.
+
     async def play_game(self, interaction: discord.Interaction, choix: str):
+        """Gère une manche de Pierre-Feuille-Ciseau."""
+        await interaction.response.defer()  # Indique que le traitement est en cours
         bot_choice = random.choice(self.choices)
         conditions = {"pierre": "ciseau", "feuille": "pierre", "ciseau": "feuille"}
 
-        result = ("Égalité 🤝" if choix == bot_choice else
-                  "Gagné 🎉" if conditions[choix] == bot_choice else "Perdu 😢")
+        if choix == bot_choice:
+            result = "Égalité 🤝"
+        elif conditions[choix] == bot_choice:
+            result = "Gagné 🎉"
+        else:
+            result = "Perdu 😢"
 
+        # Désactiver les boutons après le choix
         for child in self.children:
-            child.disabled = True
+            if isinstance(child, discord.ui.Button):
+                child.disabled = True
 
-        await interaction.response.edit_message(view=self)
+        # Mise à jour de l'affichage du message original si besoin (à adapter selon l'implémentation)
+        try:
+            await interaction.message.edit(view=self)
+        except Exception:
+            pass  # Si l'édition échoue, on ne bloque pas l'envoi du résultat
+
+        # Envoi du résultat en réponse
         await interaction.followup.send(
-            f"🎮 Vous : {choix.capitalize()}\n🤖 Bot : {bot_choice.capitalize()}\n🏆 Résultat : {result}",
+            f"🎮 **Vous :** {choix.capitalize()}\n🤖 **Bot :** {bot_choice.capitalize()}\n🏆 **Résultat :** {result}",
             ephemeral=True
         )
+        logger.info(f"🎮 PFC - {interaction.user} a joué {choix}, le bot a joué {bot_choice}. Résultat : {result}")
 
     @discord.ui.button(label="Pierre 🪨", style=discord.ButtonStyle.primary)
-    async def pierre(self, interaction, button):
+    async def pierre(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Bouton pour choisir Pierre."""
         await self.play_game(interaction, "pierre")
 
     @discord.ui.button(label="Feuille 📄", style=discord.ButtonStyle.primary)
-    async def feuille(self, interaction, button):
+    async def feuille(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Bouton pour choisir Feuille."""
         await self.play_game(interaction, "feuille")
 
     @discord.ui.button(label="Ciseau ✂️", style=discord.ButtonStyle.primary)
-    async def ciseau(self, interaction, button):
+    async def ciseau(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Bouton pour choisir Ciseau."""
         await self.play_game(interaction, "ciseau")
 
 async def setup(bot: commands.Bot):
+    """Ajoute le Cog 'Jeux' au bot."""
     await bot.add_cog(Jeux(bot))
