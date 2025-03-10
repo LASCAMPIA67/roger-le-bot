@@ -59,7 +59,7 @@ class Reseau(commands.Cog):
                     return
 
                 response_message = f"🌐 Votre IP publique est : `{ip}`"
-                await interaction.response.send_message(response_message)
+                await interaction.response.send_message(response_message, ephemeral=True)  # Rendre ce message éphémère
                 logger.info(f"🌐 IP récupérée pour {interaction.user}: {ip}")
 
         except aiohttp.ClientConnectionError:
@@ -87,7 +87,7 @@ class Reseau(commands.Cog):
     async def ping(self, interaction: discord.Interaction):
         """Commande qui affiche la latence du bot."""
         latency = round(self.bot.latency * 1000)
-        await interaction.response.send_message(f"🏓 Pong ! Latence : `{latency} ms`")
+        await interaction.response.send_message(f"🏓 Pong ! Latence : `{latency} ms`", ephemeral=True)  # Rendre ce message éphémère
         logger.info(f"🏓 Latence : {latency} ms (par {interaction.user})")
 
 async def setup(bot: commands.Bot):

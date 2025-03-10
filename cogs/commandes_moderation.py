@@ -108,7 +108,7 @@ class Moderation(commands.Cog):
         try:
             deleted = await interaction.channel.purge(limit=nombre, check=is_not_pinned)
             confirmation = await interaction.followup.send(f"✅ {len(deleted)} messages supprimés.", ephemeral=True)
-            logger.info(f"🗑️ {len(deleted)} messages supprimés par {interaction.user} dans #{interaction.channel}")
+            logger.info(f"🗑️  {len(deleted)} messages supprimés par {interaction.user} dans #{interaction.channel}")
 
             await asyncio.sleep(10)  # Attendre 10 secondes avant de supprimer le message de confirmation
             await confirmation.delete()

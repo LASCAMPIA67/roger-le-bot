@@ -1,5 +1,6 @@
 import discord
 import random
+import asyncio
 from discord import app_commands
 from discord.ext import commands
 from config import logger
@@ -12,7 +13,10 @@ class Jeux(commands.Cog):
 
     @app_commands.command(name="calc", description="Effectue un calcul simple (+, -, *, /).")
     async def calc(self, interaction: discord.Interaction, valeur_a: float, operation: str, valeur_b: float):
-        """Effectue un calcul entre deux nombres et affiche le résultat."""
+        """
+        Effectue un calcul entre deux nombres et affiche le résultat.
+        Vérifie que l'opérateur est valide et évite la division par zéro.
+        """
         operations = {
             "+": lambda a, b: a + b,
             "-": lambda a, b: a - b,
@@ -22,7 +26,7 @@ class Jeux(commands.Cog):
 
         if operation not in operations:
             await interaction.response.send_message(
-                "⛔ Opérateur invalide ! Utilisez `+`, `-`, `*`, ou `/`.", ephemeral=True
+                "⛔ Opérateur invalide ! Utilisez +, -, *, ou /.", ephemeral=True
             )
             return
 
@@ -33,34 +37,40 @@ class Jeux(commands.Cog):
             )
             return
 
-        response = f"🧮 `{valeur_a} {operation} {valeur_b}` = `{result}`"
+        response = f"🧮 {valeur_a} {operation} {valeur_b} = {result}"
         await interaction.response.send_message(response)
         logger.info(f"🧮 Calcul effectué par {interaction.user}: {valeur_a} {operation} {valeur_b} = {result}")
 
     @app_commands.command(name="pfc", description="Jouer à Pierre-Feuille-Ciseau contre le bot.")
     async def pfc(self, interaction: discord.Interaction):
-        """Démarre une partie de Pierre-Feuille-Ciseau en interaction avec l'utilisateur."""
+        """
+        Démarre une partie de Pierre-Feuille-Ciseau en affichant un message interactif
+        avec des boutons pour choisir son coup.
+        """
         view = PFCView()
-        await interaction.response.send_message("🎮 **Choisissez votre coup :**", view=view)
+        # Envoi d'un message avec les boutons interactifs, et le message est éphémère
+        await interaction.response.send_message("🎮 **Choisissez votre coup :**", view=view, ephemeral=True)
         logger.info(f"🎮 Jeu Pierre-Feuille-Ciseau lancé par {interaction.user}")
 
 class PFCView(discord.ui.View):
     """Vue interactive pour le jeu Pierre-Feuille-Ciseau."""
 
     def __init__(self):
-        super().__init__(timeout=30)  # Timeout pour éviter que les boutons restent actifs indéfiniment
+        super().__init__(timeout=30)  # Timeout pour désactiver les boutons après 30 secondes
         self.choices = ["pierre", "feuille", "ciseau"]
 
     async def on_timeout(self):
-        """Désactive les boutons si aucun choix n'est fait avant le timeout."""
+        """Désactive tous les boutons si aucun choix n'est effectué avant le timeout."""
         for child in self.children:
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
-        # Ici, 'interaction.message' n'est pas directement accessible,
-        # il est conseillé de stocker la référence du message lors de l'envoi si nécessaire.
 
     async def play_game(self, interaction: discord.Interaction, choix: str):
-        """Gère une manche de Pierre-Feuille-Ciseau."""
+        """
+        Traite le choix de l'utilisateur, calcule le résultat contre le bot et renvoie
+        une réponse éphémère. Après l'interaction, on efface le message et force l'utilisateur
+        à refaire la commande.
+        """
         await interaction.response.defer()  # Indique que le traitement est en cours
         bot_choice = random.choice(self.choices)
         conditions = {"pierre": "ciseau", "feuille": "pierre", "ciseau": "feuille"}
@@ -72,37 +82,51 @@ class PFCView(discord.ui.View):
         else:
             result = "Perdu 😢"
 
-        # Désactiver les boutons après le choix
+        # Désactiver les boutons pour éviter d'autres interactions
         for child in self.children:
             if isinstance(child, discord.ui.Button):
                 child.disabled = True
 
-        # Mise à jour de l'affichage du message original si besoin (à adapter selon l'implémentation)
+        # Tenter d'éditer le message original pour désactiver les boutons
         try:
             await interaction.message.edit(view=self)
         except Exception:
-            pass  # Si l'édition échoue, on ne bloque pas l'envoi du résultat
+            pass
 
-        # Envoi du résultat en réponse
+        # Créer un message combiné pour afficher le résultat du jeu et inviter l'utilisateur à refaire la commande
+        message = (
+            f"🎮 **Vous :** {choix.capitalize()}\n"
+            f"🤖 **Bot :** {bot_choice.capitalize()}\n"
+            f"🏆 **Résultat :** {result}\n"
+            f"🔁 **Le jeu est terminé, refaites la commande `/pfc` pour jouer à nouveau.**"
+        )
+
+        # Envoi du résultat via une réponse de suivi éphémère
         await interaction.followup.send(
-            f"🎮 **Vous :** {choix.capitalize()}\n🤖 **Bot :** {bot_choice.capitalize()}\n🏆 **Résultat :** {result}",
+            message,
             ephemeral=True
         )
         logger.info(f"🎮 PFC - {interaction.user} a joué {choix}, le bot a joué {bot_choice}. Résultat : {result}")
 
+        # Effacer le message de la commande
+        try:
+            await interaction.delete_original_response()
+        except Exception as e:
+            logger.error(f"Erreur lors de la suppression du message original: {e}")
+
     @discord.ui.button(label="Pierre 🪨", style=discord.ButtonStyle.primary)
     async def pierre(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Bouton pour choisir Pierre."""
+        """Bouton permettant de choisir Pierre."""
         await self.play_game(interaction, "pierre")
 
     @discord.ui.button(label="Feuille 📄", style=discord.ButtonStyle.primary)
     async def feuille(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Bouton pour choisir Feuille."""
+        """Bouton permettant de choisir Feuille."""
         await self.play_game(interaction, "feuille")
 
     @discord.ui.button(label="Ciseau ✂️", style=discord.ButtonStyle.primary)
     async def ciseau(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """Bouton pour choisir Ciseau."""
+        """Bouton permettant de choisir Ciseau."""
         await self.play_game(interaction, "ciseau")
 
 async def setup(bot: commands.Bot):
