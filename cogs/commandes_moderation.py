@@ -13,7 +13,8 @@ class Moderation(commands.Cog):
     async def moderation_action(self, interaction: discord.Interaction, action: str, membre: discord.Member, raison: str):
         """Méthode commune pour les actions de modération (kick et ban)."""
         if not interaction.guild:
-            return await interaction.response.send_message("⛔ Cette commande ne peut être utilisée que sur un serveur.", ephemeral=True)
+            await interaction.response.send_message("⛔ Cette commande ne peut être utilisée que sur un serveur.", ephemeral=True)
+            return
 
         actions = {
             "kick": {
@@ -31,27 +32,29 @@ class Moderation(commands.Cog):
         }
 
         if action not in actions:
-            return await interaction.response.send_message("⛔ Action inconnue.", ephemeral=True)
+            await interaction.response.send_message("⛔ Action inconnue.", ephemeral=True)
+            return
 
         act = actions[action]
 
-        # Vérification des permissions du bot
         if not act["perm"]:
-            return await interaction.response.send_message(f"⛔ Je n'ai pas la permission de {action} ce membre.", ephemeral=True)
+            await interaction.response.send_message(f"⛔ Je n'ai pas la permission de {action} ce membre.", ephemeral=True)
+            return
 
-        # Vérification de la hiérarchie des rôles
         if membre.top_role >= interaction.user.top_role:
-            return await interaction.response.send_message("⛔ Vous ne pouvez pas modérer un membre avec un rôle égal ou supérieur au vôtre.", ephemeral=True)
+            await interaction.response.send_message("⛔ Vous ne pouvez pas modérer un membre ayant un rôle supérieur ou égal au vôtre.", ephemeral=True)
+            return
 
         if membre == interaction.user:
-            return await interaction.response.send_message("⛔ Vous ne pouvez pas vous modérer vous-même.", ephemeral=True)
+            await interaction.response.send_message("⛔ Vous ne pouvez pas vous modérer vous-même.", ephemeral=True)
+            return
 
         try:
             await act["method"](reason=raison)
             await interaction.response.send_message(f"{act['emoji']} {membre.mention} {act['msg']} pour : {raison}")
             logger.info(f"{act['emoji']} {membre} {act['msg']} par {interaction.user} - Raison : {raison}")
         except discord.Forbidden:
-            await interaction.response.send_message("⛔ Je n'ai pas la permission de faire cela.", ephemeral=True)
+            await interaction.response.send_message("⛔ Je n'ai pas la permission d'effectuer cette action.", ephemeral=True)
         except discord.HTTPException as e:
             await interaction.response.send_message(f"⚠️ Erreur Discord : {e}", ephemeral=True)
             logger.error(f"⚠️ Erreur Discord lors de {action} {membre}: {e}")
@@ -73,7 +76,9 @@ class Moderation(commands.Cog):
     async def deban(self, interaction: discord.Interaction, user_id: int):
         """Débannit un utilisateur via son ID."""
         if not interaction.guild:
-            return await interaction.response.send_message("⛔ Cette commande ne peut être utilisée que sur un serveur.", ephemeral=True)
+            await interaction.response.send_message("⛔ Cette commande ne peut être utilisée que sur un serveur.", ephemeral=True)
+            return
+
         try:
             user = await self.bot.fetch_user(user_id)
             await interaction.guild.unban(user)

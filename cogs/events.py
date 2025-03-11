@@ -17,7 +17,7 @@ class Events(commands.Cog):
         self.ready_triggered = True
 
         logger.info(f"✅ {self.bot.user} connecté à {len(self.bot.guilds)} serveur(s).")
-        
+
         try:
             synced_commands = await self.bot.tree.sync()
             logger.info(f"🔄 {len(synced_commands)} commande(s) synchronisée(s).")
@@ -42,11 +42,9 @@ class Events(commands.Cog):
         """Annonce la suppression d'un message."""
         if not message.guild or not message.content:
             return
-        
-        if message.guild:  # Vérifie que le message provient bien d'un serveur
-            truncated_content = message.content[:50] + ("..." if len(message.content) > 50 else "")
-            logger.info(f"🗑️ Message supprimé par {message.author.display_name} : {truncated_content}")
 
+        truncated_content = message.content[:50] + ("..." if len(message.content) > 50 else "")
+        logger.info(f"🗑️ Message supprimé par {message.author.display_name} : {truncated_content}")
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:

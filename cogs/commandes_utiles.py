@@ -12,37 +12,49 @@ class CommandesUtiles(commands.Cog):
     async def help(self, interaction: discord.Interaction):
         """Affiche la liste des commandes disponibles et leurs descriptions."""
         embed = discord.Embed(
-            description="### Voici la liste des commandes disponibles :",
+            title="📜 Liste des commandes disponibles",
             color=discord.Color.blue()
         )
 
         embed.add_field(
             name="🔧 Utilitaires",
-            value="```/ping - Voir la latence du bot\n/help - Afficher ce message\n/calc - Calculatrice\n/panel - Panel interactif de gestion des salons (Admin)```",
+            value="```/ping     - Voir la latence du bot\n"
+                  "/help     - Afficher ce message\n"
+                  "/calc     - Calculatrice\n"
+                  "/panel    - Panel interactif de gestion des salons (Admin)```",
             inline=False
         )
 
         embed.add_field(
             name="🛡️ Modération",
-            value="```/kick - Expulser un membre (Admin)\n/ban - Bannir un membre (Admin)\n/deban - Débannir un membre (Admin)\n/clear - Supprimer des blocs de messages (Admin)```",
+            value="```/kick     - Expulser un membre (Admin)\n"
+                  "/ban      - Bannir un membre (Admin)\n"
+                  "/deban    - Débannir un membre (Admin)\n"
+                  "/clear    - Supprimer des messages (Admin)```",
             inline=False
         )
 
         embed.add_field(
             name="📊 Expérience",
-            value="```/exp - Voir sa carte de statistiques\n/classement - Voir le classement\n/ajouter_xp - Ajouter de l'XP à un utilisateur (Admin)\n/reset_xp - Réinitialiser l'XP d'un utilisateur (Admin)\n/progression - Voir sa progression d'EXP```",
+            value="```/exp        - Voir sa carte de statistiques\n"
+                  "/classement - Voir le classement\n"
+                  "/ajouter_xp - Ajouter de l'XP (Admin)\n"
+                  "/reset_xp   - Réinitialiser l'XP (Admin)\n"
+                  "/progression - Voir sa progression```",
             inline=False
         )
 
         embed.add_field(
             name="🌐 Réseau",
-            value="```/monip - Voir son IP publique```",
+            value="```/monip   - Voir son IP publique```",
             inline=False
         )
 
-        embed.set_footer(text="Astuce : Tapez / devant une commande pour l'exécuter !")
+        embed.set_footer(text="💡 Astuce : Tapez / suivi du nom d'une commande pour l'exécuter !")
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        print(f"📜 Commande /help exécutée par {interaction.user.display_name}")
 
     @app_commands.command(name="calc", description="Effectue un calcul simple (+, -, *, /).")
     async def calc(self, interaction: discord.Interaction, valeur_a: float, operation: str, valeur_b: float):
@@ -58,20 +70,23 @@ class CommandesUtiles(commands.Cog):
         }
 
         if operation not in operations:
-            await interaction.response.send_message(
-                "⛔ Opérateur invalide ! Utilisez +, -, *, ou /.", ephemeral=True
-            )
+            if not interaction.response.is_done():
+                await interaction.response.send_message("⛔ Opérateur invalide ! Utilisez +, -, *, ou /.", ephemeral=True)
+            print(f"❌ Opérateur invalide tenté par {interaction.user.display_name}: {operation}")
             return
 
         result = operations[operation](valeur_a, valeur_b)
         if result is None:
-            await interaction.response.send_message(
-                "⛔ Division par zéro impossible.", ephemeral=True
-            )
+            if not interaction.response.is_done():
+                await interaction.response.send_message("⛔ Division par zéro impossible.", ephemeral=True)
+            print(f"❌ Division par zéro tentée par {interaction.user.display_name}: {valeur_a} / {valeur_b}")
             return
 
         response = f"🧮 {valeur_a} {operation} {valeur_b} = {result}"
-        await interaction.response.send_message(response, ephemeral=True)
+        if not interaction.response.is_done():
+            await interaction.response.send_message(response, ephemeral=True)
+        print(f"🧮 Calcul effectué par {interaction.user.display_name}: {valeur_a} {operation} {valeur_b} = {result}")
 
 async def setup(bot: commands.Bot):
+    """Ajoute le cog CommandesUtiles au bot."""
     await bot.add_cog(CommandesUtiles(bot))
