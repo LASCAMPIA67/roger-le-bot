@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 if not load_dotenv():
     print("⚠️  Avertissement : Impossible de charger le fichier .env !")
 
-# Configuration des logs
+# Configuration avancée des logs avec texte entièrement coloré
 def setup_logger(name="bot"):
     log_colors = {
         "DEBUG": "cyan",
@@ -24,8 +24,9 @@ def setup_logger(name="bot"):
     logger.setLevel(log_level)
 
     if not logger.hasHandlers():
+        # Formatter avec texte entièrement coloré
         formatter = colorlog.ColoredFormatter(
-            "%(log_color)s%(levelname)s%(reset)s | %(message)s",
+            "%(log_color)s%(levelname)-8s | %(message)s",
             log_colors=log_colors
         )
 
@@ -33,8 +34,10 @@ def setup_logger(name="bot"):
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        file_handler = logging.FileHandler("bot.log", encoding="utf-8")
-        file_formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
+        # Configuration du fichier de log
+        log_filename = os.getenv("LOG_FILE", "bot.log")
+        file_handler = logging.FileHandler(log_filename, encoding="utf-8")
+        file_formatter = logging.Formatter("%(asctime)s | %(levelname)-8s | %(message)s")
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
@@ -42,11 +45,17 @@ def setup_logger(name="bot"):
 
 logger = setup_logger()
 
-# Récupération du token Discord
+# Récupération du token Discord avec gestion avancée des erreurs
 def get_token():
     token = os.getenv("DISCORD_TOKEN")
-    if not token or len(token.split(".")) < 3:
-        logger.critical("❌ ERREUR : Token Discord invalide ou manquant dans .env !")
-        raise ValueError("Le token Discord est absent ou incorrect. Vérifiez le fichier .env.")
+
+    if not token:
+        logger.critical("❌ ERREUR : Le token Discord est manquant dans .env !")
+        raise ValueError("Le token Discord est absent. Vérifiez le fichier .env.")
+
+    if len(token.split(".")) < 3:
+        logger.critical("❌ ERREUR : Token Discord invalide !")
+        raise ValueError("Le token Discord est incorrect. Vérifiez votre bot sur https://discord.com/developers/applications.")
+
     logger.info("✅ Token Discord récupéré avec succès")
     return token
