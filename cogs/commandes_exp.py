@@ -97,7 +97,7 @@ class ExpCommands(commands.Cog):
         for idx, (member, data) in enumerate(members, start=1):
             embed.add_field(
                 name=f"{idx}. {member.display_name}",
-                value=f"⭐ Prestige {data['prestige']} | 🆙 Niveau {data['level']} | 📈 XP {data['xp']}",
+                value=f"⭐ `Prestige {data['prestige']}` | 🆙 `Niveau {data['level']}` | 📈 `{data['xp']} EXP`",
                 inline=False
             )
 
