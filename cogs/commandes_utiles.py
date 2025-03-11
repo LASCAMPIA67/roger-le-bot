@@ -10,16 +10,35 @@ class CommandesUtiles(commands.Cog):
 
     @app_commands.command(name="help", description="Affiche les commandes disponibles et des astuces.")
     async def help(self, interaction: discord.Interaction):
+        """Affiche la liste des commandes disponibles et leurs descriptions."""
         embed = discord.Embed(
-            title="📜 Liste des commandes",
-            description="Voici la liste des commandes disponibles :",
+            description="### Voici la liste des commandes disponibles :",
             color=discord.Color.blue()
         )
 
-        embed.add_field(name="🔧 Utilitaires", value="/ping - Voir la latence du bot\n/help - Afficher ce message\n/calc - Calculatrice", inline=False)
-        embed.add_field(name="🛡️ Modération", value="/kick - Expulser un membre (Admin)\n/ban - Bannir un membre (Admin)\n/deban - Débannir un membre (Admin)\n/clear - Supprimer des blocs de messages (Admin)", inline=False)
-        embed.add_field(name="📊 Expérience", value="/exp - Voir son XP\n/classement - Voir le classement\n/ajouter_xp - Ajoute de l'XP à un utilisateur (Admin)", inline=False)
-        embed.add_field(name="🌐 Réseau", value="/monip - Voir son IP publique", inline=False)
+        embed.add_field(
+            name="🔧 Utilitaires",
+            value="```/ping - Voir la latence du bot\n/help - Afficher ce message\n/calc - Calculatrice\n/panel - Panel interactif de gestion des salons (Admin)```",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🛡️ Modération",
+            value="```/kick - Expulser un membre (Admin)\n/ban - Bannir un membre (Admin)\n/deban - Débannir un membre (Admin)\n/clear - Supprimer des blocs de messages (Admin)```",
+            inline=False
+        )
+
+        embed.add_field(
+            name="📊 Expérience",
+            value="```/exp - Voir sa carte de statistiques\n/classement - Voir le classement\n/ajouter_xp - Ajouter de l'XP à un utilisateur (Admin)\n/reset_xp - Réinitialiser l'XP d'un utilisateur (Admin)\n/progression - Voir sa progression d'EXP```",
+            inline=False
+        )
+
+        embed.add_field(
+            name="🌐 Réseau",
+            value="```/monip - Voir son IP publique```",
+            inline=False
+        )
 
         embed.set_footer(text="Astuce : Tapez / devant une commande pour l'exécuter !")
 

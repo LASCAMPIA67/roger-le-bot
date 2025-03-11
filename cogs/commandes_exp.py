@@ -1,115 +1,166 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from config import logger
 import json
 import os
-from collections import defaultdict
 
 class ExpCommands(commands.Cog):
-    """Cog pour les commandes liées à l'XP des utilisateurs."""
+    """Gestion de l'XP, des niveaux et des prestiges des utilisateurs."""
+
+    FILE_PATH = "xp_data.json"
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.xp_data = defaultdict(lambda: {"xp": 0, "level": 1})  # Utilisation de defaultdict pour gérer les données par défaut
-        # N'appelez pas load_xp_data() dans __init__ mais dans la méthode setup
+        self.xp_data = {}
+        self.load_xp_data()
 
-    async def load_xp_data(self):
-        """Charge les données d'XP depuis le fichier xp_data.json."""
-        if os.path.exists("xp_data.json"):
+    def load_xp_data(self):
+        """Charge les données d'XP de manière sécurisée."""
+        if os.path.exists(self.FILE_PATH):
             try:
-                with open("xp_data.json", "r") as f:
-                    self.xp_data.update(json.load(f))
-            except Exception as e:
-                logger.error(f"Erreur lors du chargement des données d'XP : {e}")
+                with open(self.FILE_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.xp_data = data if isinstance(data, dict) else {}
+            except (json.JSONDecodeError, FileNotFoundError):
+                print("❌ Erreur: Impossible de charger xp_data.json. Réinitialisation.")
+                self.xp_data = {}
+                self.save_xp_data()
 
-    async def save_xp_data(self):
-        """Sauvegarde les données d'XP dans le fichier xp_data.json."""
+    def save_xp_data(self):
+        """Sauvegarde les données XP de manière sécurisée."""
         try:
-            with open("xp_data.json", "w") as f:
+            with open(self.FILE_PATH, "w", encoding="utf-8") as f:
                 json.dump(self.xp_data, f, indent=4)
         except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde des données d'XP : {e}")
+            print(f"❌ Erreur lors de la sauvegarde des données d'XP : {e}")
+
+    def get_user_data(self, user_id: str):
+        """Retourne les données XP de l'utilisateur ou les initialise."""
+        if user_id not in self.xp_data:
+            self.xp_data[user_id] = {"xp": 0, "level": 1, "prestige": 0}
+        return self.xp_data[user_id]
 
     @app_commands.command(name="ajouter_xp", description="Ajoute de l'XP à un utilisateur.")
-    @app_commands.checks.has_permissions(administrator=True)  # Seuls les admins peuvent utiliser cette commande
+    @app_commands.checks.has_permissions(administrator=True)
     async def add_xp(self, interaction: discord.Interaction, member: discord.Member, amount: int):
-        """
-        Ajoute un montant spécifique d'XP à un utilisateur. Seuls les administrateurs peuvent utiliser cette commande.
-        """
-        # Vérification que le montant d'XP est positif
+        """Ajoute un montant spécifique d'XP à un utilisateur."""
+        await interaction.response.defer(ephemeral=True)
+
         if amount <= 0:
-            await interaction.response.send_message(
-                "⚠️ L'XP ajoutée doit être un nombre positif.", ephemeral=True
-            )
+            await interaction.followup.send("⚠️ L'XP doit être un nombre positif.", ephemeral=True)
             return
 
-        # Ajout de l'XP
         user_id = str(member.id)
-        self.xp_data[user_id]["xp"] += amount
+        user_data = self.get_user_data(user_id)
+        user_data["xp"] += amount
+        self.save_xp_data()
 
-        # Sauvegarde des données d'XP
-        try:
-            await self.save_xp_data()
-        except Exception as e:
-            logger.error(f"Erreur lors de la sauvegarde des données d'XP: {e}")
-            await interaction.response.send_message(
-                "⚠️ Une erreur est survenue lors de la sauvegarde des données d'XP.", ephemeral=True
-            )
-            return
-
-        # Confirmation de l'ajout d'XP
-        logger.info(f"✅ {amount} XP ajoutés à {member.name} (ID: {member.id}) par {interaction.user.name}.")
-        await interaction.response.send_message(
-            f"✅ {amount} XP ajoutés à {member.mention} !", ephemeral=True
-        )
+        await interaction.followup.send(f"✅ {amount} XP ajoutés à {member.mention} !", ephemeral=True)
 
     @app_commands.command(name="exp", description="Affiche l'XP d'un utilisateur.")
     async def exp(self, interaction: discord.Interaction, member: discord.Member = None):
-        """
-        Affiche l'XP d'un utilisateur. Si aucun membre n'est mentionné, affiche l'XP de l'utilisateur qui a invoqué la commande.
-        """
-        if member is None:
-            member = interaction.user  # Si aucun membre n'est spécifié, on affiche l'XP de l'utilisateur ayant invoqué la commande
+        """Affiche l'XP d'un utilisateur."""
+        await interaction.response.defer(ephemeral=True)
 
+        member = member or interaction.user
         user_id = str(member.id)
-        xp_data = self.xp_data[user_id]  # Données d'XP récupérées directement, car defaultdict s'en charge
+        xp_data = self.get_user_data(user_id)
 
-        xp = xp_data["xp"]
-        level = xp_data["level"]
+        embed = discord.Embed(title=f"📊 Statistiques de {member.display_name}", color=discord.Color.blue())
+        avatar_url = member.avatar.url if member.avatar else member.default_avatar.url
+        embed.set_thumbnail(url=avatar_url)
+        embed.add_field(name="🆙 Niveau", value=str(xp_data["level"]), inline=True)
+        embed.add_field(name="⭐ Prestige", value=str(xp_data["prestige"]), inline=True)
+        embed.add_field(name="📈 XP", value=f"{xp_data['xp']}", inline=True)
 
-        # Envoi d'un message avec l'XP et le niveau du membre
-        await interaction.response.send_message(
-            f"📊 {member.mention} a {xp} XP et est au niveau {level}.",
-            ephemeral=True  # Réponse éphémère pour qu'elle soit visible uniquement par l'utilisateur
-        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="classement", description="Affiche le classement des utilisateurs par XP.")
+    @app_commands.command(name="classement", description="Affiche le classement des utilisateurs par XP et prestige.")
     async def classement(self, interaction: discord.Interaction):
-        """
-        Affiche le classement des utilisateurs en fonction de leur XP.
-        """
-        # Trie les utilisateurs en fonction de leur XP, du plus haut au plus bas
-        sorted_xp = sorted(self.xp_data.items(), key=lambda x: x[1]["xp"], reverse=True)
+        """Affiche le classement des utilisateurs avec XP et prestige."""
+        await interaction.response.defer(ephemeral=True)
+
+        sorted_xp = sorted(self.xp_data.items(), key=lambda x: (x[1]["prestige"], x[1]["level"], x[1]["xp"]), reverse=True)
 
         if not sorted_xp:
-            await interaction.response.send_message("⚠️ Aucun utilisateur avec de l'XP n'a été trouvé.", ephemeral=True)
+            await interaction.followup.send("⚠️ Aucun utilisateur avec de l'XP trouvé.", ephemeral=True)
             return
 
-        # Construction du message du classement
-        ranking_message = "🏆 **Classement des utilisateurs par XP :**\n"
-        for idx, (user_id, data) in enumerate(sorted_xp[:10], start=1):  # Affichage des 10 premiers
-            try:
-                member = await interaction.guild.fetch_member(int(user_id))
-                ranking_message += f"{idx}. {member.mention} - {data['xp']} XP (Niveau {data['level']})\n"
-            except discord.NotFound:
-                continue  # Ignore si un utilisateur est introuvable
+        embed = discord.Embed(title="🏆 **Classement des utilisateurs**", color=discord.Color.gold())
 
-        # Envoi du classement
-        await interaction.response.send_message(ranking_message, ephemeral=True)
+        members = []
+        for user_id, data in sorted_xp[:10]:
+            member = interaction.guild.get_member(int(user_id))
+            if member:
+                members.append((member, data))
+
+        for idx, (member, data) in enumerate(members, start=1):
+            embed.add_field(
+                name=f"{idx}. {member.display_name}",
+                value=f"⭐ Prestige {data['prestige']} | 🆙 Niveau {data['level']} | 📈 XP {data['xp']}",
+                inline=False
+            )
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="reset_xp", description="Réinitialise l'XP d'un utilisateur.")
+    @app_commands.checks.has_permissions(administrator=True)
+    async def reset_xp(self, interaction: discord.Interaction, member: discord.Member):
+        """Réinitialise l'XP d'un utilisateur (Admin uniquement)."""
+        await interaction.response.defer(ephemeral=True)
+
+        user_id = str(member.id)
+        if user_id in self.xp_data:
+            self.xp_data[user_id] = {"xp": 0, "level": 1, "prestige": 0}
+            self.save_xp_data()
+            await interaction.followup.send(f"✅ XP de {member.mention} réinitialisé avec succès !", ephemeral=True)
+        else:
+            await interaction.followup.send("⚠️ L'utilisateur n'a pas encore d'XP.", ephemeral=True)
+
+    @app_commands.command(name="progression", description="Montre l'XP restant avant le prochain niveau.")
+    async def progression(self, interaction: discord.Interaction, member: discord.Member = None):
+        """Affiche combien d'XP est nécessaire pour le niveau suivant."""
+        await interaction.response.defer(ephemeral=True)
+
+        member = member or interaction.user
+        user_id = str(member.id)
+        xp_data = self.get_user_data(user_id)
+
+        current_xp = xp_data["xp"]
+        current_level = xp_data["level"]
+        level_threshold = current_level * 100  # Exemple : 100 XP * niveau actuel
+
+        xp_remaining = level_threshold - current_xp
+
+        embed = discord.Embed(
+            title=f"🚀 Progression de {member.display_name}",
+            description=f"Tu as **{current_xp} XP** et es au niveau **{current_level}**.",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="🎯 Objectif", value=f"{level_threshold} XP pour atteindre le niveau {current_level + 1}", inline=False)
+        embed.add_field(name="📉 XP Restant", value=f"Encore **{xp_remaining} XP** à gagner !", inline=False)
+
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Ajoute automatiquement de l'XP aux utilisateurs lorsqu'ils envoient des messages."""
+        if message.author.bot:
+            return
+
+        user_id = str(message.author.id)
+        user_data = self.get_user_data(user_id)
+        user_data["xp"] += 5  # Ajouter 5 XP par message
+        
+        level_threshold = user_data["level"] * 100
+        if user_data["xp"] >= level_threshold:
+            user_data["xp"] -= level_threshold
+            user_data["level"] += 1
+            await message.channel.send(f"🎉 {message.author.mention} est monté au niveau {user_data['level']} !")
+
+        self.save_xp_data()
 
 async def setup(bot: commands.Bot):
-    """Ajoute le Cog au bot."""
+    """Ajoute le Cog au bot et force la synchronisation des commandes."""
     cog = ExpCommands(bot)
-    await cog.load_xp_data()  # Charge les données d'XP lors de l'ajout du Cog
     await bot.add_cog(cog)

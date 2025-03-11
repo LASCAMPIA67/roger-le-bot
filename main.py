@@ -24,7 +24,8 @@ class Bot(commands.Bot):
             "cogs.commandes_reseau",
             "cogs.exp",
             "cogs.commandes_exp",
-            "cogs.commandes_utiles"
+            "cogs.commandes_utiles",
+            "cogs.creator"
         ]
 
     async def setup_hook(self):
