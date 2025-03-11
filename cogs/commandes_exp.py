@@ -15,11 +15,10 @@ class ExpCommands(commands.Cog):
         self.bot = bot
         self.xp_data = {}
         self.lock = asyncio.Lock()
-        self.xp_cooldowns = {}
         self.load_xp_data()
 
     def load_xp_data(self):
-        """Charge les données d'XP de manière sécurisée."""
+        """Charge les données XP de manière sécurisée."""
         if os.path.exists(self.FILE_PATH):
             try:
                 with open(self.FILE_PATH, "r", encoding="utf-8") as f:
@@ -91,7 +90,6 @@ class ExpCommands(commands.Cog):
         current_xp = xp_data["xp"]
         current_level = xp_data["level"]
         level_threshold = (current_level + 1) * 100  # Correction du calcul
-
         xp_remaining = level_threshold - current_xp
 
         embed = discord.Embed(
@@ -122,7 +120,7 @@ class ExpCommands(commands.Cog):
             if member:
                 embed.add_field(
                     name=f"{idx}. {member.display_name}",
-                    value=f"⭐ `Prestige {data['prestige']}` | 🆙 `Niveau {data['level']}` | 📈 `{data['xp']} EXP`",
+                    value=f"⭐ Prestige {data['prestige']} | 🆙 Niveau {data['level']} | 📈 {data['xp']} EXP",
                     inline=False
                 )
 

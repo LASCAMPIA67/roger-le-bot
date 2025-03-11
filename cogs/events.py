@@ -16,14 +16,6 @@ class Events(commands.Cog):
             return
         self.ready_triggered = True
 
-        logger.info(f"✅ {self.bot.user} connecté à {len(self.bot.guilds)} serveur(s).")
-
-        try:
-            synced_commands = await self.bot.tree.sync()
-            logger.info(f"🔄 {len(synced_commands)} commande(s) synchronisée(s).")
-        except Exception as e:
-            logger.error(f"❌ Erreur lors de la synchronisation des commandes : {e}")
-
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         """Répond 'Bonjour' si un utilisateur dit 'bonjour'."""
