@@ -43,10 +43,10 @@ class Events(commands.Cog):
         if not message.guild or not message.content:
             return
         
-        if message.channel.permissions_for(message.guild.me).send_messages:
+        if message.guild:  # Vérifie que le message provient bien d'un serveur
             truncated_content = message.content[:50] + ("..." if len(message.content) > 50 else "")
-            await message.channel.send(f"🗑️ {message.author.display_name} a supprimé : {truncated_content}")
             logger.info(f"🗑️ Message supprimé par {message.author.display_name} : {truncated_content}")
+
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: discord.Message, after: discord.Message) -> None:

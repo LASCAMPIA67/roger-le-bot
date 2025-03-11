@@ -22,9 +22,9 @@ class Bot(commands.Bot):
             "cogs.events",
             "cogs.commandes_moderation",
             "cogs.commandes_reseau",
-            "cogs.commandes_jeux",
             "cogs.exp",
-            "cogs.commandes_exp"
+            "cogs.commandes_exp",
+            "cogs.commandes_utiles"
         ]
 
     async def setup_hook(self):

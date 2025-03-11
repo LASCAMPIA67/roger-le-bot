@@ -3,17 +3,12 @@ import colorlog
 import os
 from dotenv import load_dotenv
 
-# ╔════════════════════════════════════════════════════════╗
-# ║                  CHARGEMENT DES VARIABLES              ║
-# ╚════════════════════════════════════════════════════════╝
+# Charger les variables d'environnement
 if not load_dotenv():
     print("⚠️  Avertissement : Impossible de charger le fichier .env !")
 
-# ╔════════════════════════════════════════════════════════╗
-# ║                 CONFIGURATION DES LOGS                 ║
-# ╚════════════════════════════════════════════════════════╝
+# Configuration des logs
 def setup_logger(name="bot"):
-    """ Configure un logger avec colorlog pour la console et un fichier de logs. """
     log_colors = {
         "DEBUG": "cyan",
         "INFO": "green",
@@ -34,37 +29,24 @@ def setup_logger(name="bot"):
             log_colors=log_colors
         )
 
-        # Handler console
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        # Handler fichier log
         file_handler = logging.FileHandler("bot.log", encoding="utf-8")
         file_formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
-    # Filtrer les logs inutiles de discord.py si activé
-    if os.getenv("DISCORD_LOGGING", "FALSE").upper() != "TRUE":
-        for module in ("discord", "discord.http", "discord.gateway"):
-            logging.getLogger(module).setLevel(logging.WARNING)
-
     return logger
 
-# Initialisation du logger
 logger = setup_logger()
 
-# ╔════════════════════════════════════════════════════════╗
-# ║                RÉCUPÉRATION DU TOKEN                   ║
-# ╚════════════════════════════════════════════════════════╝
+# Récupération du token Discord
 def get_token():
-    """ Récupère et valide le token Discord depuis les variables d'environnement. """
     token = os.getenv("DISCORD_TOKEN")
-
-    if not token or not isinstance(token, str) or len(token.split(".")) < 3:
-        logger.critical("❌ ERREUR : Token Discord invalide ou manquant dans le fichier .env !")
-        raise ValueError("Le token Discord est absent ou incorrect. Vérifie ton fichier .env.")
-
-    logger.info("✅ Token récupéré avec succès")
+    if not token or len(token.split(".")) < 3:
+        logger.critical("❌ ERREUR : Token Discord invalide ou manquant dans .env !")
+        raise ValueError("Le token Discord est absent ou incorrect. Vérifiez le fichier .env.")
+    logger.info("✅ Token Discord récupéré avec succès")
     return token

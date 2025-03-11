@@ -87,31 +87,21 @@ class Moderation(commands.Cog):
 
     @app_commands.command(name="clear", description="Supprime des messages du salon actuel.")
     @app_commands.checks.has_permissions(manage_messages=True)
-    @app_commands.describe(
-        nombre="Nombre de messages à supprimer (entre 1 et 100). Par défaut 10.",
-        delai="Délai en secondes avant suppression (facultatif)."
-    )
-    async def clear(self, interaction: discord.Interaction, nombre: int = 10, delai: int = 0):
-        """Supprime un nombre défini de messages, avec un délai optionnel."""
-        # Déférer la réponse pour avoir le temps d'effectuer la purge
-        await interaction.response.defer(ephemeral=True)
+    @app_commands.describe(nombre="Nombre de messages à supprimer (entre 1 et 100).")
+    async def clear(self, interaction: discord.Interaction, nombre: int = 100):
+        """Supprime un nombre défini de messages."""
+        await interaction.response.defer(ephemeral=True)  # Empêche l'expiration de l'interaction
 
         nombre = max(1, min(nombre, 100))  # Discord limite la purge à 100 messages
 
         def is_not_pinned(msg):
             return not msg.pinned  # On ne supprime pas les messages épinglés
 
-        if delai > 0:
-            await interaction.followup.send(f"⏳ Suppression des messages dans {delai} secondes...", ephemeral=True)
-            await asyncio.sleep(delai)
-
         try:
             deleted = await interaction.channel.purge(limit=nombre, check=is_not_pinned)
-            confirmation = await interaction.followup.send(f"✅ {len(deleted)} messages supprimés.", ephemeral=True)
+            await interaction.followup.send(f"✅ {len(deleted)} messages supprimés.", ephemeral=True)
             logger.info(f"🗑️  {len(deleted)} messages supprimés par {interaction.user} dans #{interaction.channel}")
 
-            await asyncio.sleep(10)  # Attendre 10 secondes avant de supprimer le message de confirmation
-            await confirmation.delete()
         except discord.Forbidden:
             await interaction.followup.send("⛔ Permissions insuffisantes pour supprimer des messages.", ephemeral=True)
         except discord.HTTPException as e:
